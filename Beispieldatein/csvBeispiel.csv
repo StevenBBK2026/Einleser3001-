@@ -1,0 +1,5 @@
+ID,Aufgabe,Beschreibung,Priorität,Tags
+1,User Login implementieren,Als Nutzer möchte ich mich anmelden können,hoch,auth,security
+2,Dashboard anzeigen,Übersicht der Daten im Portal,mittel,ui,frontend
+3,API für User Stories erstellen,REST Schnittstelle für Datenzugriff,hoch,api,backend
+4,Farbdesign überarbeiten,UI modernisieren,niedrig,design,ui

@@ -1,0 +1,25 @@
+<stories>
+    <story>
+        <id>100</id>
+        <title>Startseite erstellen</title>
+        <description>Landing Page für das System</description>
+        <priority>mittel</priority>
+        <tags>ui,frontend,design</tags>
+    </story>
+
+    <story>
+        <id>101</id>
+        <title>API absichern</title>
+        <description>Tokenbasierte Authentifizierung hinzufügen</description>
+        <priority>hoch</priority>
+        <tags>api,security,backend</tags>
+    </story>
+
+    <story>
+        <id>102</id>
+        <title>Daten exportieren</title>
+        <description>User Stories als CSV exportieren</description>
+        <priority>niedrig</priority>
+        <tags>export,data</tags>
+    </story>
+</stories>
