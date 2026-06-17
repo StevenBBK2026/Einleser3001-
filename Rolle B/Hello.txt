@@ -1,0 +1,2 @@
+This files only pupose is to be able to commit
+ the folder struckture and can later be deleted.
