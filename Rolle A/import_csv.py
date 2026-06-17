@@ -1,4 +1,5 @@
 import csv
+from errors import FileNotFound, MissingFieldError
 from mappers import normalize_common
 
 
@@ -12,13 +13,19 @@ CSV_MAPPING = {
 
 
 def import_csv(path: str):
-    results = []
+    try:
+        with open(path, newline="", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
 
-    with open(path, newline="", encoding="utf-8") as file:
-        reader = csv.DictReader(file)
+            results = []
 
-        for row in reader:
-            normalized = normalize_common(row, "csv", CSV_MAPPING)
-            results.append(normalized)
+            for row in reader:
+                if not row.get("ID") or not row.get("Aufgabe"):
+                    raise MissingFieldError("CSV: Pflichtfeld fehlt (ID oder Aufgabe)")
 
-    return results
+                results.append(normalize_common(row, "csv", CSV_MAPPING))
+
+            return results
+
+    except FileNotFoundError:
+        raise FileNotFound("CSV-Datei nicht gefunden")
