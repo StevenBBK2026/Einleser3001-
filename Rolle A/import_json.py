@@ -1,4 +1,5 @@
 import json
+from errors import FileNotFound, InvalidDataFormat
 from mappers import normalize_common
 
 
@@ -12,16 +13,25 @@ JSON_MAPPING = {
 
 
 def import_json(path: str):
-    with open(path, "r", encoding="utf-8") as file:
-        data = json.load(file)
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            data = json.load(file)
 
-    results = []
+        if not isinstance(data, list):
+            data = data.get("items", [])
 
-    # kann Liste oder Objekt sein
-    items = data if isinstance(data, list) else data.get("items", [])
+        results = []
 
-    for item in items:
-        normalized = normalize_common(item, "json", JSON_MAPPING)
-        results.append(normalized)
+        for item in data:
+            if "id" not in item or "title" not in item:
+                raise InvalidDataFormat("JSON: Pflichtfelder fehlen")
 
-    return results
+            results.append(normalize_common(item, "json", JSON_MAPPING))
+
+        return results
+
+    except FileNotFoundError:
+        raise FileNotFound("JSON-Datei nicht gefunden")
+
+    except json.JSONDecodeError:
+        raise InvalidDataFormat("JSON ist kaputt oder ungültig")
