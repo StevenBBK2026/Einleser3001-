@@ -3,6 +3,8 @@ import json
 from io import StringIO
 
 from app.models.story import StoryCreate, StoryRead
+from app.services.mappers import normalize_common
+from app.services.errors import MissingFieldError, InvalidDataFormat
 
 
 class StoryService:
@@ -31,63 +33,86 @@ class StoryService:
         return story
 
     def import_csv(self, content: str) -> list[StoryRead]:
+        """Import stories from CSV content using Role A's field mapping."""
+        # Mapping from CSV field names to common model field names
+        csv_mapping = {
+            "id": "Vorgangsnummer",
+            "title": "Aufgabenname",
+            "description": "Notizen",
+            "status": "Status",
+            "priority": "Priorität",
+            "tags": "Bezeichnungen"
+        }
+        
         reader = csv.DictReader(StringIO(content), delimiter=";")
         imported_stories: list[StoryRead] = []
-
+        
         for row in reader:
-            story = StoryRead(
-                id=str(row.get("Vorgangsnummer", "")),
-                title=str(row.get("Aufgabenname", "")).strip(),
-                description=(row.get("Notizen") or None),
-                source="csv",
-                status=(row.get("Status") or None),
-                priority=(row.get("Priorität") or row.get("Priorit?t") or None),
-                tags=self._split_tags(row.get("Bezeichnungen")),
-            )
+            # Skip empty rows
+            if not row.get(csv_mapping["id"]) or not row.get(csv_mapping["title"]):
+                raise MissingFieldError("CSV: Required fields missing (ID or Title)")
+            
+            # Normalize the row using Role A's mapping logic
+            normalized = normalize_common(row, "csv", csv_mapping)
+            
+            # Convert normalized dict to StoryRead
+            story = StoryRead(**normalized)
             self._stories.append(story)
             imported_stories.append(story)
-
+        
         return imported_stories
 
     def import_json(self, content: str) -> list[StoryRead]:
-        payload = json.loads(content)
+        """Import stories from JSON content using Role A's field mapping."""
+        # Mapping from JSON field names to common model field names
+        json_mapping = {
+            "id": "id",
+            "title": "title",
+            "description": "body",
+            "status": "state",
+            "priority": "priority",
+            "tags": "labels"
+        }
+        
+        try:
+            payload = json.loads(content)
+        except json.JSONDecodeError:
+            raise InvalidDataFormat("JSON is malformed or invalid")
+        
+        # Handle both list and single object
         records = payload if isinstance(payload, list) else [payload]
         imported_stories: list[StoryRead] = []
-
+        
         for record in records:
-            story = StoryRead(
-                id=str(record.get("number") or record.get("id") or ""),
-                title=str(record.get("title", "")).strip(),
-                description=record.get("body") or None,
-                source="json",
-                status=record.get("state") or None,
-                priority=record.get("priority") or None,
-                tags=self._extract_labels(record.get("labels")),
-            )
+            # Validate required fields
+            if not record.get("id") and not record.get("number"):
+                raise MissingFieldError("JSON: Required field missing (id)")
+            if not record.get("title"):
+                raise MissingFieldError("JSON: Required field missing (title)")
+            
+            # Handle 'number' as fallback for 'id' (GitHub API)
+            if not record.get("id") and record.get("number"):
+                record["id"] = record.get("number")
+            
+            # Normalize the record using Role A's mapping logic
+            normalized = normalize_common(record, "json", json_mapping)
+            
+            # Extract labels if present (GitHub API returns list of label objects)
+            if isinstance(record.get("labels"), list):
+                labels = []
+                for label in record.get("labels", []):
+                    if isinstance(label, dict):
+                        name = label.get("name")
+                        if name:
+                            labels.append(str(name))
+                    elif label:
+                        labels.append(str(label))
+                normalized["tags"] = labels
+            
+            # Convert normalized dict to StoryRead
+            story = StoryRead(**normalized)
             self._stories.append(story)
             imported_stories.append(story)
-
+        
         return imported_stories
 
-    @staticmethod
-    def _split_tags(value: object) -> list[str]:
-        if not value:
-            return []
-        text = str(value).strip()
-        if not text:
-            return []
-        return [item.strip() for item in text.replace("|", ",").split(",") if item.strip()]
-
-    @staticmethod
-    def _extract_labels(value: object) -> list[str]:
-        if not isinstance(value, list):
-            return []
-        labels: list[str] = []
-        for label in value:
-            if isinstance(label, dict):
-                name = label.get("name")
-                if name:
-                    labels.append(str(name))
-            elif label:
-                labels.append(str(label))
-        return labels
