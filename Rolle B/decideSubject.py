@@ -73,13 +73,14 @@ def decideSubject(userStory: str) -> str:
     sdm_filter = regex(sdm_repository)
     evp_filter = regex(evp_repository)
     gid_filter = regex(gid_repository)
+    
 
     # re.findall liefert uns eine Liste aller Treffer
     sdm_hits = len(sdm_filter.findall(example_stories[0]))  # Findet: "Validierung", "JSON", "Daten" -> Score: 3
     evp_hits = len(evp_filter.findall(example_stories[0])) # (Über die EVP-Logik) Findet: "REST", "Endpunkt" -> Score: 2
     gid_hits = len(gid_filter.findall(example_stories[0])) # Findet: "Kunde" -> Score: 1
 
-    
+
     for m in sdm_repository["keywords"]:
         if m in example_stories[0]:
             subjectScoring["SDM"] += 1
