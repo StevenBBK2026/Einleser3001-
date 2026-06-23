@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Einleser 3001</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; display: flex; justify-content: center; padding: 2rem 1rem; }
+.wrap { width: 100%; max-width: 620px; }
+h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+.subtitle { font-size: 14px; color: #666; margin-bottom: 1.5rem; }
+.upload-area { border: 1px dashed #ccc; border-radius: 12px; padding: 2rem; text-align: center; background: #fff; cursor: pointer; transition: border-color 0.15s; margin-bottom: 0.75rem; }
+.upload-area:hover { border-color: #888; }
+.upload-icon { font-size: 28px; margin-bottom: 0.5rem; }
+.upload-area p { font-size: 14px; color: #555; }
+.upload-area span { font-size: 12px; color: #999; }
+#fileInput { display: none; }
+.file-chosen { font-size: 13px; color: #555; margin-bottom: 0.75rem; min-height: 18px; }
+.file-chosen b { color: #1a1a1a; font-weight: 500; }
+button#importBtn { width: 100%; padding: 10px; font-size: 15px; border-radius: 8px; cursor: pointer; border: 1px solid #ccc; background: #fff; color: #1a1a1a; font-family: inherit; }
+button#importBtn:hover { background: #f0f0ee; }
+button#importBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.results { margin-top: 1.5rem; }
+.results-header { font-size: 14px; color: #666; margin-bottom: 0.75rem; }
+.results-header b { color: #1a1a1a; font-weight: 500; }
+.story-card { background: #fff; border: 1px solid #e8e8e6; border-radius: 12px; padding: 0.875rem 1rem; margin-bottom: 0.5rem; }
+.story-title { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+.story-desc { font-size: 12px; color: #666; margin-top: 2px; }
+.story-meta { font-size: 11px; color: #999; margin-top: 4px; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 0.5rem; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 99px; }
+.tag-subject { background: #EEEDFE; color: #3C3489; font-weight: 500; }
+.tag-normal { background: #f0f0ee; color: #555; border: 1px solid #e8e8e6; }
+.error-box { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 0.75rem 1rem; font-size: 13px; color: #b91c1c; margin-top: 1rem; }
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid #ccc; border-top-color: #555; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Einleser 3001</h1>
+  <p class="subtitle">CSV- oder JSON-Datei hochladen, um User Stories einzulesen und einem Schulfach zuzuordnen.</p>
+
+  <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📂</div>
+    <p>Klicken um eine Datei auszuwählen</p>
+    <span>Unterstützt .csv und .json</span>
+    <input type="file" id="fileInput" accept=".csv,.json" />
+  </div>
+
+  <div class="file-chosen" id="fileChosen">Keine Datei ausgewählt</div>
+  <button id="importBtn" disabled onclick="runImport()">Datei importieren</button>
+
+  <div id="errorBox" style="display:none"></div>
+  <div id="results" class="results" style="display:none"></div>
+</div>
+
+<script>
+const SUBJECTS = ["EVP", "GID", "SDM"];
+
+function getSubjectTags(tags) {
+  return tags.filter(t => SUBJECTS.some(s => t.includes(s)));
+}
+function getNormalTags(tags) {
+  return tags.filter(t => !SUBJECTS.some(s => t.includes(s)));
+}
+
+const fileInput = document.getElementById("fileInput");
+const fileChosen = document.getElementById("fileChosen");
+const importBtn = document.getElementById("importBtn");
+
+fileInput.addEventListener("change", () => {
+  const f = fileInput.files[0];
+  if (f) {
+    fileChosen.innerHTML = `<b>${f.name}</b> (${(f.size / 1024).toFixed(1)} KB)`;
+    importBtn.disabled = false;
+  }
+});
+
+async function runImport() {
+  const f = fileInput.files[0];
+  if (!f) return;
+
+  const ext = f.name.split(".").pop().toLowerCase();
+  const endpoint = ext === "csv"
+    ? "http://127.0.0.1:8000/userstories/import/csv"
+    : "http://127.0.0.1:8000/userstories/import/json";
+
+  importBtn.disabled = true;
+  importBtn.innerHTML = '<span class="spinner"></span>Wird importiert…';
+  document.getElementById("errorBox").style.display = "none";
+  document.getElementById("results").style.display = "none";
+
+  const formData = new FormData();
+  formData.append("file", f);
+
+  try {
+    const res = await fetch(endpoint, { method: "POST", body: formData });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Serverfehler ${res.status}`);
+    }
+    const data = await res.json();
+    showResults(data);
+  } catch (e) {
+    const box = document.getElementById("errorBox");
+    box.style.display = "block";
+    box.className = "error-box";
+    box.innerHTML = `⚠️ ${e.message}`;
+  } finally {
+    importBtn.disabled = false;
+    importBtn.innerHTML = "Datei importieren";
+  }
+}
+
+function showResults(data) {
+  const container = document.getElementById("results");
+  container.style.display = "block";
+
+  let html = `<div class="results-header"><b>${data.imported}</b> ${data.imported === 1 ? "User Story" : "User Stories"} importiert</div>`;
+
+  for (const story of data.stories) {
+    const subjects = getSubjectTags(story.tags || []);
+    const normal = getNormalTags(story.tags || []);
+
+    const subjectBadges = subjects.map(s => `<span class="tag tag-subject">${s}</span>`).join("");
+    const normalBadges = normal.map(t => `<span class="tag tag-normal">${t}</span>`).join("");
+
+    const priority = story.priority || "—";
+    const source = story.source === "csv" ? "CSV" : "JSON";
+
+    html += `
+      <div class="story-card">
+        <div class="story-title">${story.title}</div>
+        ${story.description ? `<div class="story-desc">${story.description}</div>` : ""}
+        <div class="story-meta">Nr. ${story.id} &middot; Quelle: ${source} &middot; Priorität: ${priority}</div>
+        <div class="tags">${subjectBadges}${normalBadges}</div>
+      </div>`;
+  }
+
+  container.innerHTML = html;
+}
+</script>
+</body>
+</html>
