@@ -88,12 +88,6 @@ Das zugeordnete Fach erscheint als Tag in der Antwort und in der Oberfläche als
 
 ## Tests
 
-Tests mit pytest ausführen:
-
-```bash
-pytest
-```
-
 Beispieldateien für den manuellen Test befinden sich im Projekt:
 - `csvBeispiel.csv` – Beispiel CSV-Datei
 - Swagger unter `/docs` erlaubt das direkte Testen aller Endpunkte im Browser

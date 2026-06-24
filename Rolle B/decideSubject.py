@@ -42,7 +42,7 @@ evp_repository = {
 
 gid_repository = { 
     "keywords": [ 
-        "nutzer", "kunde", "user", "anwender", "endverbraucher", "persona", "zielgruppe", 
+        "nutzer", "anzeige", "kunde", "user", "anwender", "endverbraucher", "persona", "zielgruppe", 
         "bedienung", "handhabung", "oberfläche", "frontend", "ui", "ux", "ansicht", "button", 
         "layout", "klick", "dokumentation", "beschreibung", "übergabe", "anleitung", "handbuch", 
         "ticket", "anforderung", "darstellung", "verständlichkeit", "übersicht", "lesbarkeit", 
